@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -66,47 +67,77 @@ namespace Microsoft.Extensions.ApiDescription.Tool.Commands
                     }
                 }
 
+                // As part of the aspnet/Mvc#8425 fix, make all warnings in this method errors unless the file already
+                // exists.
                 if (serviceType == null)
                 {
-                    // As part of the aspnet/Mvc#8425 fix, make this an error unless the file already exists.
+                    Reporter.WriteWarning(Resources.FormatServiceTypeNotFound(serviceName));
+                    return false;
+                }
+
+                var method = serviceType.GetMethod(methodName, new[] { typeof(string), typeof(TextWriter) });
+                if (method == null)
+                {
+                    Reporter.WriteWarning(Resources.FormatMethodNotFound(methodName, serviceName));
+                    return false;
+                }
+                else if (method.ReturnType != typeof(Task))
+                {
+                    // Do not support Task<T> because we do nothing with the Result.
+                    Reporter.WriteWarning(Resources.FormatMethodReturnTypeUnsupported(
+                        methodName,
+                        serviceName,
+                        method.ReturnType,
+                        typeof(Task)));
+                    return false;
+                }
+
+                var service = services.GetService(serviceType);
+                if (service == null)
+                {
                     Reporter.WriteWarning(Resources.FormatServiceNotFound(serviceName));
-                    return true;
+                    return false;
                 }
 
-                var method = serviceType.GetMethod(methodName, new[] { typeof(TextWriter), typeof(string) });
-                var service = services.GetRequiredService(serviceType);
-
-                var success = true;
-                using (var writer = File.CreateText(context.Output))
+                var stream = new MemoryStream();
+                using (var writer = new StreamWriter(stream))
                 {
-                    if (method.ReturnType == typeof(bool))
+                    var resultTask = (Task)method.Invoke(service, new object[] { documentName, writer });
+                    if (resultTask == null)
                     {
-                        success = (bool)method.Invoke(service, new object[] { writer, documentName });
+                        Reporter.WriteWarning(
+                            Resources.FormatMethodReturnedNull(methodName, serviceName, nameof(Task)));
+                        return false;
                     }
-                    else
+
+                    if (!resultTask.Wait(TimeSpan.FromMinutes(1)))
                     {
-                        method.Invoke(service, new object[] { writer, documentName });
+                        Reporter.WriteWarning($"");
+                        return false;
+                    }
+
+                    writer.Flush();
+                    stream.Position = 0L;
+                    using (var outStream = File.Create(context.OutputPath))
+                    {
+                        stream.CopyTo(outStream);
                     }
                 }
 
-                if (!success)
-                {
-                    // As part of the aspnet/Mvc#8425 fix, make this an error unless the file already exists.
-                    var message = Resources.FormatMethodInvocationFailed(methodName, serviceName, documentName);
-                    Reporter.WriteWarning(message);
-                }
-
-                return success;
+                return true;
+            }
+            catch (AggregateException ex)
+            {
+                Reporter.WriteWarning(FormatException(ex.InnerException));
             }
             catch (Exception ex)
             {
-                var message = FormatException(ex);
-
-                // As part of the aspnet/Mvc#8425 fix, make this an error unless the file already exists.
-                Reporter.WriteWarning(message);
-
-                return false;
+                Reporter.WriteWarning(FormatException(ex));
             }
+
+            File.Delete(context.OutputPath);
+
+            return false;
         }
 
         // TODO: Use Microsoft.AspNetCore.Hosting.WebHostBuilderFactory.Sources once we have dev feed available.
