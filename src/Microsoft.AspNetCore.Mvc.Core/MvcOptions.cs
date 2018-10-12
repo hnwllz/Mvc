@@ -442,6 +442,19 @@ namespace Microsoft.AspNetCore.Mvc
             }
         }
 
+        /// <summary>
+        /// Gets or sets a value that determines if <see cref="ValidationVisitor"/>
+        /// can short-circuiting validation when a model does not have any associated validators.
+        /// </summary>
+        /// <remarks>
+        /// When <see cref="ModelMetadata.HasValidators"/> is <see langword="true"/>, that is it is determined
+        /// that a model or any of it's properties or collection elements cannot have any validators,
+        /// <see cref="ValidationVisitor"/> can short-circuit validation for the model and mark the object
+        /// graph as valid. Setting this property to <see langword="true"/>, allows <see cref="ValidationVisitor"/> to
+        /// perform this optimization.
+        /// </remarks>
+        public bool AllowShortCircuitingValidationWhenNoValidatorsArePresent { get; set; }
+
         IEnumerator<ICompatibilitySwitch> IEnumerable<ICompatibilitySwitch>.GetEnumerator()
         {
             return ((IEnumerable<ICompatibilitySwitch>)_switches).GetEnumerator();
