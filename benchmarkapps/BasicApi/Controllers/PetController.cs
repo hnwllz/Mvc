@@ -12,14 +12,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BasicApi.Controllers
 {
-    [ApiController]
     [Route("/pet")]
     public class PetController : ControllerBase
     {
         [HttpPost("add-pet")]
-        public ActionResult<Pet> AddPetWithoutDb(Pet pet)
+        public ActionResult<Pet> AddPetWithoutDb(byte[] content)
         {
-            return Ok();
+            return Content(content.Length.ToString());
         }
     }
 }
