@@ -17,11 +17,7 @@ namespace BasicApi.Controllers
     [Route("/pet")]
     public class PetController : ControllerBase
     {
-        public PetController(BasicApiContext dbContext)
-        {
-            DbContext = dbContext;
-        }
-
+        
         public BasicApiContext DbContext { get; }
 
         [HttpGet("{id}", Name = "FindPetById")]
@@ -132,7 +128,6 @@ namespace BasicApi.Controllers
             return new CreatedAtRouteResult("FindPetById", new { id = pet.Id }, pet);
         }
 
-        [Authorize("pet-store-writer")]
         [HttpPost("add-pet")]
         public ActionResult<Pet> AddPetWithoutDb(Pet pet)
         {
