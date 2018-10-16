@@ -48,7 +48,7 @@
   "BasicApi.PostWithoutDb": {
     "Path": "/pet/add-pet",
     "ClientProperties": {
-      "Scripts": "https://raw.githubusercontent.com/aspnet/Mvc/release/2.2/benchmarkapps/BasicApi/postJsonWithToken.lua"
+      "Scripts": "https://raw.githubusercontent.com/aspnet/Mvc/prkrishn/perf-test/benchmarkapps/BasicApi/postJsonWithToken.lua"
     }
   }
 }
